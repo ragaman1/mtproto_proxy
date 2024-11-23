@@ -1,0 +1,99 @@
+{application, mtproto_proxy,
+ [{description, "High-performance Telegram MTProto proxy server with basic Cloudflare"},
+  {vsn, "0.7.1"},
+  {registered, []},
+  {mod, { mtproto_proxy_app, []}},
+  {applications,
+   [lager,
+    ranch,
+    erlang_psq,
+    crypto,
+    ssl,
+    inets,
+    kernel,
+    stdlib
+   ]},
+  {env,[
+        {listen_ip, "0.0.0.0"},
+        
+        % Basic ports configuration
+        {ports, [
+            #{name => mtp_handler_443,
+              port => 443,
+              secret => <<"d0d6e111bada5511fcce9584deadbeef">>,
+              tag => <<"dcbe8f1493fa4cd9ab300891c0b5b326">>},
+            #{name => mtp_handler_8443,
+              port => 8443,
+              secret => <<"your_second_secret_here">>,
+              tag => <<"your_second_tag_here">>}
+        ]},
+
+        {num_acceptors, 100},
+        {max_connections, 128000},
+
+        {allowed_protocols, [mtp_fake_tls, mtp_secure]},
+
+        % Basic policy
+        {policy,
+         [{max_connections, [port_name, tls_domain], 30},
+          {in_table, tls_domain, allowed_domains},
+          {not_in_table, [client_ipv4], banned_ips}
+         ]},
+
+        {init_timeout_sec, 30},
+        {hibernate_timeout_sec, 30},
+        {ready_timeout_sec, 900},
+
+        % IP lookup services
+        {ip_lookup_services,
+         ["https://api.ipify.org/",
+          "https://ifconfig.me/ip",
+          "http://ipv4.seriyps.ru/",
+          "http://v4.ident.me/"]},
+
+        {reset_close_socket, handshake_error},
+
+        {replay_check_server_error_filter, on},
+        {replay_check_session_storage, on},
+        
+        {replay_check_session_storage_opts,
+         #{max_items => 8000000,
+           max_memory_mb => 1024,
+           max_age_minutes => 240}},
+
+        {upstream_socket_buffer_size, 102400},
+        {downstream_socket_buffer_size, 1048576},
+
+        {mtp_full_check_crc32, true},
+
+        {upstream_healthchecks,
+         [{qlen, 500},
+          {gc, 819200},
+          {total_mem, 6291456}]},
+
+        {init_dc_connections, 4},
+        {clients_per_dc_connection, 500},
+
+        {downstream_backpressure,
+         #{bytes_total => 20971520,
+           packets_total => 1000,
+           bytes_per_upstream => 102400,
+           packets_per_upstream => 5}},
+
+        % Basic TLS settings
+        {tls_opts, [
+            {versions, ['tlsv1.2', 'tlsv1.3']},
+            {honor_cipher_order, true},
+            {secure_renegotiate, true}
+        ]},
+
+        {metric_backend, mtp_metric},
+
+        {proxy_secret_url, "https://core.telegram.org/getProxySecret"},
+        {proxy_config_url, "https://core.telegram.org/getProxyConfig"}
+       ]},
+  {modules, []},
+
+  {licenses, ["Apache 2.0"]},
+  {links, [{"GitHub", "https://github.com/seriyps/mtproto_proxy"}]}
+ ]}.
