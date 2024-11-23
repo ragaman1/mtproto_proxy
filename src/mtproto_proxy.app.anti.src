@@ -1,0 +1,121 @@
+{application, mtproto_proxy,
+ [{description, "Anti-censorship MTProto proxy server"},
+  {vsn, "0.7.1"},
+  {registered, []},
+  {mod, { mtproto_proxy_app, []}},
+  {applications,
+   [lager,
+    ranch,
+    erlang_psq,
+    crypto,
+    ssl,
+    inets,
+    kernel,
+    stdlib
+   ]},
+  {env,[
+        {listen_ip, "0.0.0.0"},
+        
+        % Multiple ports with fake TLS domains
+        {ports, [
+            #{name => mtp_handler_443,
+              port => 443,
+              secret => <<"your_secret_here">>,
+              tag => <<"your_tag_here">>,
+              % Fake TLS domain settings
+              fake_tls_domain => "www.cloudfront.net",
+              protocols => [mtp_fake_tls]},
+              
+            #{name => mtp_handler_80,
+              port => 80,
+              secret => <<"your_second_secret">>,
+              tag => <<"your_second_tag">>,
+              fake_tls_domain => "ajax.googleapis.com",
+              protocols => [mtp_fake_tls]},
+              
+            #{name => mtp_handler_8443,
+              port => 8443,
+              secret => <<"your_third_secret">>,
+              tag => <<"your_third_tag">>,
+              fake_tls_domain => "s3.amazonaws.com",
+              protocols => [mtp_fake_tls]},
+
+            % Additional port masquerading as HTTPS
+            #{name => mtp_handler_https,
+              port => 443,
+              secret => <<"your_fourth_secret">>,
+              tag => <<"your_fourth_tag">>,
+              fake_tls_domain => "www.microsoft.com",
+              protocols => [mtp_fake_tls]}
+        ]},
+
+        % Only use secure and obfuscated protocols
+        {allowed_protocols, [mtp_fake_tls]},
+
+        % Increased security settings
+        {num_acceptors, 128},
+        {max_connections, 256000},
+
+        % Anti-detection policy
+        {policy,
+         [{max_connections, [port_name, tls_domain], 50},
+          {not_in_table, [client_ipv4], banned_ips},
+          {max_connections_per_ip, 15}
+         ]},
+
+        % Shorter timeouts to prevent detection
+        {init_timeout_sec, 20},
+        {hibernate_timeout_sec, 20},
+        {ready_timeout_sec, 600},
+
+        % Multiple IP lookup services including secure ones
+        {ip_lookup_services,
+         ["https://api.ipify.org/",
+          "https://icanhazip.com/",
+          "https://ifconfig.me/ip",
+          "https://ip.seeip.org/",
+          "https://ident.me/"]},
+
+        {reset_close_socket, handshake_error},
+
+        % Enhanced anti-replay protection
+        {replay_check_server_error_filter, on},
+        {replay_check_session_storage, on},
+        
+        {replay_check_session_storage_opts,
+         #{max_items => 10000000,
+           max_memory_mb => 2048,
+           max_age_minutes => 180}},
+
+        % Enhanced TLS settings for anti-detection
+        {tls_opts, [
+            {versions, ['tlsv1.2', 'tlsv1.3']},
+            {ciphers, ["ECDHE-ECDSA-AES128-GCM-SHA256",
+                      "ECDHE-RSA-AES128-GCM-SHA256",
+                      "ECDHE-ECDSA-AES256-GCM-SHA384",
+                      "ECDHE-RSA-AES256-GCM-SHA384"]},
+            {honor_cipher_order, true},
+            {eccs, [secp256r1, secp384r1]},
+            {secure_renegotiate, true}
+        ]},
+
+        % Anti-censorship settings
+        {anti_censorship_settings, [
+            {packet_randomization, true},
+            {tls_padding, true},
+            {fake_packet_size, true},
+            {connection_scrambling, true}
+        ]},
+
+        % DPI circumvention
+        {dpi_bypass_settings, [
+            {split_segment_size, 3},
+            {random_padding, true},
+            {fake_packet_payload, true}
+        ]}
+       ]},
+  {modules, []},
+
+  {licenses, ["Apache 2.0"]},
+  {links, [{"GitHub", "https://github.com/seriyps/mtproto_proxy"}]}
+ ]}.
