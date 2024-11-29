@@ -5,7 +5,7 @@ This part of code was extracted from [@socksy_bot](https://t.me/socksy_bot).
 
 Support: https://t.me/erlang_mtproxy .
 
-Features
+Featuress
 --------
 
 * Promoted channels. See `tag` option.
